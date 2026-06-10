@@ -1,0 +1,58 @@
+name: MeetMind CI/CD
+
+on:
+  push:
+    branches:
+      - main
+
+  pull_request:
+    branches:
+      - main
+
+jobs:
+
+  build-and-test:
+
+    runs-on: ubuntu-latest
+
+    steps:
+
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Set Up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install FFmpeg
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Install Dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Verify Python Files
+        run: |
+          python -m py_compile app.py
+
+      - name: Verify Imports
+        run: |
+          python -c "
+          from core.transcriber import transcribe_all
+          from core.summarize import summarize
+          from core.extractor import extract_action_items
+          from core.rag_engine import build_rag_chain
+          print('Imports Successful')
+          "
+
+      - name: Build Docker Image
+        run: |
+          docker build -t meetmind .
+
+      - name: Docker Build Successful
+        run: |
+          echo 'Docker image built successfully'

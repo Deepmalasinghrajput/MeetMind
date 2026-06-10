@@ -1,0 +1,43 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Virtual Environment
+.venv/
+venv/
+env/
+
+# Git
+.git/
+.gitignore
+
+# Environment Variables
+.env
+
+# IDE
+.vscode/
+.idea/ 
+
+# OS Files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary Files
+temp/
+tmp/
+uploads/
+
+# Whisper Cache (optional)
+.cache/
+
+# Build Files
+build/
+dist/
+
+# Docker
+docker-compose.override.yml
