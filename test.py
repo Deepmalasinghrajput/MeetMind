@@ -4,7 +4,7 @@ import time
 
 from utils.audio_processor import process_input
 from core.transcriber import transcribe_all
-from core.summarizer import summarize, generate_title
+from core.summarize import summarize, generate_title
 from core.extractor import extract_action_items, extract_key_decisions, extract_questions
 
 
@@ -16,7 +16,8 @@ language = "english"   # "english" → Whisper, "hinglish" → Sarvam
 chunks = process_input(source)
 
 
-transcript = transcribe_all(chunks, language=language)
+transcript_result = transcribe_all(chunks, language=language)
+transcript = transcript_result["text"] if isinstance(transcript_result, dict) else transcript_result
 print("\n" + "=" * 60)
 print("📝 TRANSCRIPT")
 print("=" * 60)

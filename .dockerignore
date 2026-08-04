@@ -3,41 +3,61 @@ __pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
 
-# Virtual Environment
+# Virtual environments
 .venv/
 venv/
 env/
+ENV/
 
-# Git
+# Git / IDE
 .git/
 .gitignore
-
-# Environment Variables
-.env
-
-# IDE
 .vscode/
-.idea/ 
+.idea/
 
-# OS Files
+# Secrets — never bake into image
+.env
+.env.*
+!.env.example
+
+# OS
 .DS_Store
 Thumbs.db
 
-# Logs
+# Logs / temp
 *.log
-
-# Temporary Files
 temp/
 tmp/
 uploads/
+downloades/
+*.wav
+*.mp3
+*.mp4
 
-# Whisper Cache (optional)
+# Local data / DBs / vector stores
+data/
+vector_db/
+vectordb/
+chroma/
+chroma_db/
+*.db
+*.sqlite3
+faiss_index/
+
+# Caches
 .cache/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+htmlcov/
 
-# Build Files
+# Docs / local tooling noise
+*.md
+!README.md
+
+# Build
 build/
 dist/
-
-# Docker
-docker-compose.override.yml
+*.egg-info/

@@ -75,6 +75,7 @@ pinecone/
 weaviate/
 *.db
 *.sqlite3
+data/
 
 # =========================
 # Streamlit secrets (if used)

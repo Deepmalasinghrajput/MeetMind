@@ -53,3 +53,28 @@ def extract_questions(transcript: str) -> str:
         "If none found say 'No open questions found.'"
     )
     return chain.invoke(transcript)
+
+
+def generate_follow_up_email(
+    title: str,
+    summary: str,
+    action_items: str,
+    key_decisions: str,
+    open_questions: str,
+) -> str:
+    """Draft a professional follow-up email from meeting insights."""
+    context = (
+        f"Meeting title: {title}\n\n"
+        f"Summary:\n{summary}\n\n"
+        f"Action items:\n{action_items}\n\n"
+        f"Key decisions:\n{key_decisions}\n\n"
+        f"Open questions:\n{open_questions}\n"
+    )
+    chain = build_chain(
+        "You are an executive assistant. Write a clear professional follow-up "
+        "email after a meeting. Include: subject line, short greeting, "
+        "key outcomes, action items with owners if known, open questions, "
+        "and a polite closing. Keep it concise. Do not invent facts not in "
+        "the provided notes."
+    )
+    return chain.invoke(context)

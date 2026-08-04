@@ -13,7 +13,8 @@ def run_pipeline(source :str, language :str = "english") -> dict:
 
     chunks = process_input(source)
 
-    transcript = transcribe_all(chunks,language)
+    transcript_result = transcribe_all(chunks,language)
+    transcript = transcript_result["text"] if isinstance(transcript_result, dict) else transcript_result
     print(f"raw transcription (first 300 characters ) {transcript[:300]}")
 
     title = generate_title(transcript)
