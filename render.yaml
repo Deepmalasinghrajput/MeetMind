@@ -1,12 +1,15 @@
-# Render Blueprint — https://render.com/docs/blueprint-spec
-# Connect this repo on Render → New → Blueprint, or create a Web Service from Dockerfile.
+# Render Blueprint: https://dashboard.render.com → New → Blueprint
+# Or: New → Web Service → connect this GitHub repo → Docker
 
 services:
   - type: web
     name: meetmind
     runtime: docker
+    # starter recommended — free tier often OOM with Whisper/torch
     plan: starter
     region: oregon
+    branch: main
+    autoDeploy: true
     healthCheckPath: /health
     dockerfilePath: ./Dockerfile
     dockerContext: .
@@ -25,6 +28,9 @@ services:
         value: "2"
       - key: PYTHONUNBUFFERED
         value: "1"
+      - key: FORCE_HTTPS
+        value: "true"
+    # Keep meeting history across deploys (paid plans)
     disk:
       name: meetmind-data
       mountPath: /app/data
