@@ -10,7 +10,8 @@ from functools import wraps
 from pathlib import Path
 
 from dotenv import load_dotenv
-from flask import Flask, jsonify, render_template, request, send_file, session
+from flask import Flask, g, jsonify, render_template, request, send_file, session
+import time
 import io
 
 # Load .env from project root (next to this file)
@@ -130,6 +131,9 @@ def auth_register():
         return jsonify({"error": err}), 400
 
     _login_session(user)
+    from core.metrics import log_event
+
+    log_event("auth_register", user_id=user["id"])
     return jsonify({"user": user})
 
 
@@ -146,6 +150,9 @@ def auth_login():
         return jsonify({"error": err}), 401
 
     _login_session(user)
+    from core.metrics import log_event
+
+    log_event("auth_login", user_id=user["id"])
     return jsonify({"user": user})
 
 
@@ -210,10 +217,14 @@ def process():
     from core.summarize import summarize, generate_title
     from core.extractor import extract_action_items, extract_key_decisions, extract_questions
     from core.meeting_store import save_meeting
+    from core.metrics import log_event, track_stage
 
     tmp_file = None
     source_label = ""
     user_id = _current_user_id()
+    pipeline_start = time.perf_counter()
+    pipeline_ok = False
+    meeting_id = None
 
     try:
         if request.is_json:
@@ -242,41 +253,51 @@ def process():
 
         app.logger.info("Pipeline start | language=%s | source=%s", language, source[:80])
 
-        chunks = process_input(source)
-        tr = transcribe_all(chunks, language)
-        transcript = tr["text"] if isinstance(tr, dict) else str(tr)
-        segments = tr.get("segments", []) if isinstance(tr, dict) else []
-        word_count = tr.get("word_count", 0) if isinstance(tr, dict) else len(transcript.split())
-        duration_seconds = tr.get("duration_seconds", 0) if isinstance(tr, dict) else 0
+        with track_stage("upload_to_summary", user_id=user_id):
+            with track_stage("audio_import", user_id=user_id):
+                chunks = process_input(source)
+            with track_stage("transcribe", user_id=user_id):
+                tr = transcribe_all(chunks, language)
+            transcript = tr["text"] if isinstance(tr, dict) else str(tr)
+            segments = tr.get("segments", []) if isinstance(tr, dict) else []
+            word_count = tr.get("word_count", 0) if isinstance(tr, dict) else len(transcript.split())
+            duration_seconds = tr.get("duration_seconds", 0) if isinstance(tr, dict) else 0
 
-        if not transcript or not transcript.strip():
-            return jsonify({
-                "error": "Transcription produced empty text. Try another video or file."
-            }), 500
+            if not transcript or not transcript.strip():
+                return jsonify({
+                    "error": "Transcription produced empty text. Try another video or file."
+                }), 500
 
-        title = generate_title(transcript)
-        summary = summarize(transcript)
-        action_items = extract_action_items(transcript)
-        key_decisions = extract_key_decisions(transcript)
-        open_questions = extract_questions(transcript)
+            with track_stage("llm_title", user_id=user_id):
+                title = generate_title(transcript)
+            with track_stage("llm_summary", user_id=user_id):
+                summary = summarize(transcript)
+        with track_stage("llm_extract", user_id=user_id):
+            action_items = extract_action_items(transcript)
+            key_decisions = extract_key_decisions(transcript)
+            open_questions = extract_questions(transcript)
 
-        rag_ready = _rebuild_rag(transcript)
+        with track_stage("rag_build", user_id=user_id):
+            rag_ready = _rebuild_rag(transcript)
 
-        meeting_id = save_meeting({
-            "user_id": user_id,
-            "title": title,
-            "source": source_label,
-            "language": language,
-            "transcript": transcript,
-            "segments": segments,
-            "summary": summary,
-            "action_items": action_items,
-            "key_decisions": key_decisions,
-            "open_questions": open_questions,
-            "word_count": word_count,
-        })
+        with track_stage("db_save", user_id=user_id):
+            meeting_id = save_meeting({
+                "user_id": user_id,
+                "title": title,
+                "source": source_label,
+                "language": language,
+                "transcript": transcript,
+                "segments": segments,
+                "summary": summary,
+                "action_items": action_items,
+                "key_decisions": key_decisions,
+                "open_questions": open_questions,
+                "word_count": word_count,
+            })
         global _active_meeting_id
         _active_meeting_id = meeting_id
+        pipeline_ok = True
+        log_event("pipeline_success", user_id=user_id)
 
         return jsonify({
             "id": meeting_id,
@@ -297,6 +318,7 @@ def process():
         })
 
     except Exception as exc:
+        log_event("pipeline_failure", user_id=user_id)
         app.logger.error("Pipeline error: %s", exc, exc_info=True)
         msg = str(exc)
         if "GROQ" in msg.upper() or "api_key" in msg.lower() or "401" in msg:
@@ -306,6 +328,16 @@ def process():
         return jsonify({"error": msg}), 500
 
     finally:
+        from core.metrics import log_pipeline_stage
+
+        elapsed_ms = (time.perf_counter() - pipeline_start) * 1000
+        log_pipeline_stage(
+            "pipeline_total",
+            elapsed_ms,
+            user_id=user_id,
+            meeting_id=meeting_id,
+            success=pipeline_ok,
+        )
         if tmp_file and os.path.exists(tmp_file.name):
             try:
                 os.unlink(tmp_file.name)
@@ -429,16 +461,41 @@ def ask():
         }), 400
 
     try:
-        answer = ask_question(rag_chain, question)
+        from core.metrics import log_event, track_stage
+
+        with track_stage("rag_query", user_id=_current_user_id()):
+            answer = ask_question(rag_chain, question)
+        log_event("ask_query", user_id=_current_user_id())
         return jsonify({"answer": answer})
     except Exception as exc:
         app.logger.error("RAG error: %s", exc, exc_info=True)
         return jsonify({"error": str(exc)}), 500
 
 
+@app.before_request
+def _metrics_start_timer():
+    if request.path.startswith("/static/"):
+        return
+    g._metrics_start = time.perf_counter()
+
+
 @app.after_request
 def _add_response_headers(response):
     """Headers helpful for mobile browsers and API clients."""
+    if not request.path.startswith("/static/"):
+        start = getattr(g, "_metrics_start", None)
+        if start is not None:
+            from core.metrics import log_request
+
+            duration_ms = (time.perf_counter() - start) * 1000
+            log_request(
+                path=request.path,
+                method=request.method,
+                status_code=response.status_code,
+                duration_ms=duration_ms,
+                user_id=_current_user_id(),
+            )
+
     response.headers["X-Content-Type-Options"] = "nosniff"
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     # Avoid stale HTML/CSS/JS on mobile after deploys
@@ -448,7 +505,7 @@ def _add_response_headers(response):
         else:
             response.headers.setdefault("Cache-Control", "no-store")
     elif request.path.startswith("/api/") or request.path in (
-        "/process", "/ask", "/meetings", "/ready", "/health", "/follow-up-email"
+        "/process", "/ask", "/meetings", "/ready", "/health", "/follow-up-email", "/stats"
     ) or request.path.startswith("/meetings/") or request.path.startswith("/export/"):
         response.headers.setdefault("Cache-Control", "no-store")
     return response
@@ -479,6 +536,24 @@ def too_large(_err):
 def server_error(_err):
     return jsonify({"error": "Internal server error"}), 500
 
+@app.route("/api/metrics", methods=["GET"])
+@login_required
+def api_metrics():
+    """Usage and performance summary for reporting / debugging."""
+    from core.metrics import get_metrics_summary
+
+    return jsonify(get_metrics_summary())
+
+
+@app.route("/stats", methods=["GET"])
+@login_required
+def stats():
+    """Resume-friendly usage stats (transcription, pipeline, meetings)."""
+    from core.metrics import get_usage_stats
+
+    return jsonify(get_usage_stats())
+
+
 @app.route("/api/status", methods=["GET"])
 def api_status():
     """Lightweight health for mobile clients / PWA checks."""
@@ -497,9 +572,11 @@ def api_status():
 try:
     from core.meeting_store import init_db as _init_meetings_db
     from core.auth import init_users_db as _init_users_db
+    from core.metrics import init_metrics_db as _init_metrics_db
 
     _init_meetings_db()
     _init_users_db()
+    _init_metrics_db()
 except Exception as _boot_exc:  # pragma: no cover
     import logging
     logging.getLogger(__name__).warning("DB bootstrap failed: %s", _boot_exc)
