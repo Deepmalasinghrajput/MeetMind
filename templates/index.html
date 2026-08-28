@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#5b41e8" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <title>AI Meeting Assistant</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}" />
+</head>
+<body>
+  <!-- Auth gate -->
+  <div class="auth-gate" id="authGate">
+    <div class="auth-card">
+      <div class="auth-brand">
+        <div class="ff-logo">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3c-2 3-3 5-3 7a3 3 0 006 0c0-2-1-4-3-7z" fill="currentColor"/>
+            <path d="M8 14c0 3 1.8 5.5 4 6.5 2.2-1 4-3.5 4-6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M9 21h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div>
+          <div class="ff-brand-name">AI Meeting Assistant</div>
+          <div class="ff-brand-tag">Notes · Actions · Chat</div>
+        </div>
+      </div>
+      <h1 class="auth-title" id="authTitle">Welcome back</h1>
+      <p class="auth-sub" id="authSub">Sign in to access your meeting notes</p>
+
+      <div class="auth-tabs">
+        <button type="button" class="auth-tab active" id="tabLogin" onclick="showAuthMode('login')">Sign in</button>
+        <button type="button" class="auth-tab" id="tabRegister" onclick="showAuthMode('register')">Create account</button>
+      </div>
+
+      <form class="auth-form" id="authForm" onsubmit="return submitAuth(event)">
+        <div class="auth-field" id="nameField" style="display:none">
+          <label for="authName">Full name</label>
+          <input type="text" id="authName" name="name" autocomplete="name" minlength="2" placeholder="Your name" />
+        </div>
+        <div class="auth-field">
+          <label for="authEmail">Email</label>
+          <input type="email" id="authEmail" name="email" autocomplete="email" required placeholder="you@company.com" />
+        </div>
+        <div class="auth-field">
+          <label for="authPassword">Password</label>
+          <input type="password" id="authPassword" name="password" autocomplete="current-password" required minlength="6" placeholder="At least 6 characters" />
+        </div>
+        <p class="auth-error" id="authError" style="display:none"></p>
+        <button type="submit" class="ff-btn-primary auth-submit" id="authSubmit">Sign in</button>
+      </form>
+    </div>
+  </div>
+
+  <div class="ff-app" id="appShell" style="display:none">
+
+    <div class="sidebar-overlay" id="sidebarOverlay" hidden></div>
+
+    <aside class="ff-sidebar" id="sidebar">
+      <div class="ff-brand">
+        <div class="ff-logo" aria-hidden="true">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M12 3c-2 3-3 5-3 7a3 3 0 006 0c0-2-1-4-3-7z" fill="currentColor"/>
+            <path d="M8 14c0 3 1.8 5.5 4 6.5 2.2-1 4-3.5 4-6.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+            <path d="M9 21h6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+          </svg>
+        </div>
+        <div class="ff-brand-text">
+          <div class="ff-brand-name">AI Meeting Assistant</div>
+          <div class="ff-brand-tag">Meeting intelligence</div>
+        </div>
+        <button class="ff-icon-btn sidebar-close mobile-only" id="sidebarClose" type="button" aria-label="Close menu">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M6 6l12 12M18 6L6 18" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+        <button class="ff-icon-btn sidebar-toggle desktop-only" id="sidebarToggle" type="button" aria-label="Collapse sidebar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+        </button>
+      </div>
+
+      <button class="ff-cta" type="button" data-panel="input">
+        <span class="ff-cta-plus" aria-hidden="true">+</span>
+        <span>New meeting</span>
+      </button>
+
+      <nav class="ff-nav" aria-label="Main">
+        <p class="nav-section">Workspace</p>
+        <button class="nav-item active" data-panel="history" id="navHistory" type="button">
+          <span class="nav-ico" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M4 6.5A2.5 2.5 0 016.5 4h11A2.5 2.5 0 0120 6.5v11a2.5 2.5 0 01-2.5 2.5h-11A2.5 2.5 0 014 17.5v-11z" stroke="currentColor" stroke-width="1.7"/><path d="M8 9h8M8 12.5h8M8 16h5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </span>
+          <span>Meetings</span>
+        </button>
+        <button class="nav-item" data-panel="input" type="button">
+          <span class="nav-ico" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 5v10M8 9l4-4 4 4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 16v2.5A1.5 1.5 0 006.5 20h11a1.5 1.5 0 001.5-1.5V16" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </span>
+          <span>Upload</span>
+        </button>
+
+        <p class="nav-section">Meeting</p>
+        <button class="nav-item" data-panel="insights" id="navInsights" type="button">
+          <span class="nav-ico" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8L12 3z" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/></svg>
+          </span>
+          <span>AI Notes</span>
+        </button>
+        <button class="nav-item" data-panel="transcript" id="navTranscript" type="button">
+          <span class="nav-ico" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M7 7h10M7 12h10M7 17h6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>
+          </span>
+          <span>Transcript</span>
+        </button>
+        <button class="nav-item" data-panel="chat" id="navChat" type="button">
+          <span class="nav-ico" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M5 6.5A2.5 2.5 0 017.5 4h9A2.5 2.5 0 0119 6.5v7A2.5 2.5 0 0116.5 16H10l-4 3v-3H7.5A2.5 2.5 0 015 13.5v-7z" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>
+          </span>
+          <span>Ask AI</span>
+        </button>
+        <button class="nav-item" id="exportBtn" type="button" disabled>
+          <span class="nav-ico" aria-hidden="true">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none"><path d="M12 4v11M8 11l4 4 4-4M5 19h14" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+          </span>
+          <span>Export</span>
+        </button>
+      </nav>
+
+      <div class="ff-side-foot">
+        <div class="user-menu" id="userMenu">
+          <button class="user-chip" id="userChip" type="button" aria-haspopup="true" aria-expanded="false" title="Account">
+            <div class="user-avatar" id="userAvatar">U</div>
+            <div class="user-meta">
+              <div class="user-name" id="userName">—</div>
+              <div class="user-email" id="userEmail">—</div>
+            </div>
+            <span class="user-chevron" aria-hidden="true">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none"><path d="M7 10l5 5 5-5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>
+            </span>
+          </button>
+          <div class="user-popout" id="userPopout" role="menu" hidden>
+            <div class="user-popout-head">
+              <div class="user-avatar sm" id="userPopAvatar">U</div>
+              <div class="user-popout-meta">
+                <div class="user-name" id="userPopName">—</div>
+                <div class="user-email" id="userPopEmail">—</div>
+              </div>
+            </div>
+            <button class="user-popout-item danger" type="button" role="menuitem" onclick="logoutUser()">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M10 7V5.5A1.5 1.5 0 0111.5 4h7A1.5 1.5 0 0120 5.5v13a1.5 1.5 0 01-1.5 1.5h-7A1.5 1.5 0 0110 18.5V17M14 12H4m0 0l3-3M4 12l3 3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>
+              <span>Log out</span>
+            </button>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <div class="ff-main">
+      <header class="ff-top">
+        <div class="ff-top-left">
+          <button class="ff-icon-btn mobile-menu-btn mobile-only" id="mobileMenuBtn" type="button" aria-label="Open menu">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none"><path d="M4 7h16M4 12h16M4 17h16" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+          </button>
+          <div>
+            <p class="ff-kicker" id="topKicker">Meetings</p>
+            <h1 class="meeting-title-display" id="meetingTitleDisplay">Your meeting library</h1>
+          </div>
+        </div>
+        <div class="ff-top-actions">
+          <div class="stats-pills" id="statsPills" style="display:none">
+            <span class="stat-pill" id="statWords">0 words</span>
+            <span class="stat-pill" id="statDuration">0:00</span>
+            <span class="stat-pill" id="statSegments">0 segs</span>
+          </div>
+          <span class="language-badge" id="currentLang">EN</span>
+          <div class="processing-pill" id="processingPill" style="display:none">
+            <span class="pulse-ring"></span>
+            <span id="processingPillText">Transcribing…</span>
+          </div>
+          <button class="ff-btn-primary-sm" type="button" data-panel="input">+ New</button>
+        </div>
+      </header>
+
+      <!-- Meeting tab strip (Fireflies-style) appears when a meeting is loaded -->
+      <div class="ff-meeting-tabs" id="meetingTabs" style="display:none">
+        <button class="ff-tab" type="button" data-panel="insights">AI Notes</button>
+        <button class="ff-tab" type="button" data-panel="transcript">Transcript</button>
+        <button class="ff-tab" type="button" data-panel="chat">Ask AI</button>
+        <button class="ff-tab-export" type="button" onclick="openExportModal()">Export</button>
+      </div>
+
+      <main class="ff-content" id="mainContent">
+
+        <!-- MEETINGS LIBRARY -->
+        <section class="panel active" id="panelHistory">
+          <div class="library-toolbar">
+            <div class="ff-library-search">
+              <svg class="search-ico" width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="11" cy="11" r="6.5" stroke="currentColor" stroke-width="1.8"/>
+                <path d="M16 16l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+              </svg>
+              <input type="search" id="librarySearch" placeholder="Search meetings…" oninput="filterMeetingLibrary(this.value)" />
+            </div>
+            <button class="ff-btn-primary" type="button" data-panel="input">Transcribe</button>
+          </div>
+
+          <div class="history-list" id="historyList">
+            <div class="history-empty" id="historyEmpty">
+              <div class="ff-empty-illu" aria-hidden="true">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
+                  <path d="M8 10v4M12 8v8M16 11v2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+                  <rect x="3.5" y="4.5" width="17" height="15" rx="3" stroke="currentColor" stroke-width="1.7"/>
+                </svg>
+              </div>
+              <p class="empty-title">No meetings yet</p>
+              <p>Upload a short recording or (on local) paste a YouTube URL to generate notes, action items, and AI Q&amp;A.</p>
+              <button class="ff-btn-primary" type="button" data-panel="input">Transcribe your first meeting</button>
+            </div>
+          </div>
+        </section>
+
+        <!-- UPLOAD / TRANSCRIBE -->
+        <section class="panel" id="panelInput">
+          <div class="setup-banner" id="setupBanner" style="display:none">
+            <div class="setup-banner-icon">⚠</div>
+            <p class="setup-banner-text">Setup needed</p>
+          </div>
+
+          <div class="ff-transcribe-hero">
+            <h2>Transcribe a meeting</h2>
+            <p>Upload a short audio/video recording for the most reliable demo (especially on the live hosted site). YouTube links work best on your local machine.</p>
+          </div>
+
+          <div class="ff-pipeline-row" aria-label="AI pipeline">
+            <div class="workflow-step" id="wf-input"><span class="wf-dot"></span><span class="wf-label">Import</span><span class="wf-connector"></span></div>
+            <div class="workflow-step" id="wf-process"><span class="wf-dot"></span><span class="wf-label">Audio</span><span class="wf-connector"></span></div>
+            <div class="workflow-step" id="wf-transcribe"><span class="wf-dot"></span><span class="wf-label">Transcribe</span><span class="wf-connector"></span></div>
+            <div class="workflow-step" id="wf-title"><span class="wf-dot"></span><span class="wf-label">Title</span><span class="wf-connector"></span></div>
+            <div class="workflow-step" id="wf-summary"><span class="wf-dot"></span><span class="wf-label">Notes</span><span class="wf-connector"></span></div>
+            <div class="workflow-step" id="wf-extract"><span class="wf-dot"></span><span class="wf-label">Actions</span><span class="wf-connector"></span></div>
+            <div class="workflow-step" id="wf-rag"><span class="wf-dot"></span><span class="wf-label">Ask Fred</span></div>
+          </div>
+
+          <div class="ff-card input-card">
+            <div class="input-tabs">
+              <button class="input-tab active" id="tabFile" type="button" onclick="switchTab('file')">Upload file</button>
+              <button class="input-tab" id="tabYoutube" type="button" onclick="switchTab('youtube')">YouTube</button>
+            </div>
+
+            <div class="tab-content active" id="contentFile">
+              <label class="field-label">Audio / video file</label>
+              <div class="file-drop-zone" id="fileDropZone">
+                <input type="file" id="fileInput" accept="audio/*,video/*,.mp3,.mp4,.wav,.m4a,.webm,.ogg,.flac" hidden />
+                <div class="file-drop-content" id="fileDropContent">
+                  <p class="file-drop-title">Drop your meeting recording</p>
+                  <p class="file-drop-sub">MP3, MP4, WAV, M4A, WEBM · prefer under 2 minutes for live demo</p>
+                  <button class="ff-btn-ghost" type="button" onclick="document.getElementById('fileInput').click()">Browse files</button>
+                </div>
+                <div class="file-selected-content" id="fileSelectedContent" style="display:none">
+                  <div class="file-preview">
+                    <div class="file-preview-icon">♪</div>
+                    <div class="file-preview-info">
+                      <div class="file-preview-name" id="filePreviewName">file</div>
+                      <div class="file-preview-size" id="filePreviewSize">0 MB</div>
+                    </div>
+                    <button class="file-preview-remove" type="button" onclick="clearFile()">✕</button>
+                  </div>
+                </div>
+              </div>
+              <p class="input-hint">Recommended for Render / live demo — works without YouTube download.</p>
+            </div>
+
+            <div class="tab-content" id="contentYoutube">
+              <label class="field-label" for="youtubeUrl">Meeting link</label>
+              <div class="url-input-group">
+                <span class="url-input-icon">🔗</span>
+                <input type="url" id="youtubeUrl" class="url-input" placeholder="Paste YouTube URL…" autocomplete="off" spellcheck="false" />
+                <button class="url-clear" id="urlClear" type="button" onclick="clearUrl()" style="display:none">✕</button>
+              </div>
+              <p class="input-hint">Cloud hosts often block YouTube downloads. If this fails, switch to <strong>Upload file</strong>.</p>
+            </div>
+
+            <div class="input-footer">
+              <div class="language-select-group">
+                <span class="lang-label">Language</span>
+                <div class="lang-options">
+                  <label class="lang-option"><input type="radio" name="language" value="english" checked /><span>English</span></label>
+                  <label class="lang-option"><input type="radio" name="language" value="hinglish" /><span>Hinglish</span></label>
+                </div>
+              </div>
+              <button class="btn-primary ff-btn-primary" id="processBtn" type="button" onclick="startPipeline()">
+                Start transcription
+              </button>
+            </div>
+          </div>
+
+          <div class="progress-card ff-card" id="progressCard" style="display:none">
+            <div class="progress-card-header">
+              <div>
+                <h3>Transcribing your meeting…</h3>
+                <p class="progress-card-sub">Fireflies-style pipeline is running. This may take a few minutes.</p>
+              </div>
+              <div class="spinner"></div>
+            </div>
+            <div class="progress-steps" id="progressSteps">
+              <div class="prog-step" id="prog-input"><div class="prog-step-icon">1</div><div class="prog-step-body"><div class="prog-step-name">Media processing</div><div class="prog-step-desc">Import & chunk audio</div></div><div class="prog-step-status">—</div></div>
+              <div class="prog-step" id="prog-transcribe"><div class="prog-step-icon">2</div><div class="prog-step-body"><div class="prog-step-name">Speech-to-text</div><div class="prog-step-desc">Whisper transcription</div></div><div class="prog-step-status">—</div></div>
+              <div class="prog-step" id="prog-title"><div class="prog-step-icon">3</div><div class="prog-step-body"><div class="prog-step-name">Meeting title</div><div class="prog-step-desc">Generate title</div></div><div class="prog-step-status">—</div></div>
+              <div class="prog-step" id="prog-summary"><div class="prog-step-icon">4</div><div class="prog-step-body"><div class="prog-step-name">AI notes</div><div class="prog-step-desc">Super summary</div></div><div class="prog-step-status">—</div></div>
+              <div class="prog-step" id="prog-extract"><div class="prog-step-icon">5</div><div class="prog-step-body"><div class="prog-step-name">Action items</div><div class="prog-step-desc">Decisions & questions</div></div><div class="prog-step-status">—</div></div>
+              <div class="prog-step" id="prog-rag"><div class="prog-step-icon">6</div><div class="prog-step-body"><div class="prog-step-name">Ask Fred ready</div><div class="prog-step-desc">Build knowledge base</div></div><div class="prog-step-status">—</div></div>
+            </div>
+            <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar" style="width:0%"></div></div>
+          </div>
+
+          <div class="error-card" id="errorCard" style="display:none">
+            <div class="error-icon">!</div>
+            <div class="error-body">
+              <div class="error-title">Transcription failed</div>
+              <div class="error-msg" id="errorMsg">Something went wrong.</div>
+            </div>
+            <button class="ff-btn-ghost" type="button" onclick="resetError()">Try again</button>
+          </div>
+        </section>
+
+        <!-- AI NOTES (Fireflies summary) -->
+        <section class="panel" id="panelInsights">
+          <div class="ff-notes-banner">
+            <div>
+              <span class="ff-pill">AI Super Summary</span>
+              <h2>Meeting notes</h2>
+              <p class="panel-sub">Overview, action items, decisions, and open questions</p>
+            </div>
+            <div class="panel-actions">
+              <button class="ff-btn-ghost" type="button" onclick="generateFollowUpEmail()" id="emailDraftBtn">Draft follow-up</button>
+              <button class="ff-btn-ghost" type="button" onclick="copyAllInsights()" id="copyAllBtn">Copy all</button>
+              <button class="ff-btn-primary-sm" type="button" data-panel="chat">Ask Fred</button>
+            </div>
+          </div>
+
+          <div class="insights-grid">
+            <div class="insight-card full-width" id="cardSummary">
+              <div class="insight-card-header">
+                <div class="insight-label"><span class="insight-dot summary"></span> Overview</div>
+                <button class="btn-icon-sm" type="button" onclick="copyContent('summaryContent')">Copy</button>
+              </div>
+              <div class="insight-body" id="summaryContent">
+                <div class="insight-skeleton"><div class="skeleton-line w80"></div><div class="skeleton-line w90"></div><div class="skeleton-line w70"></div></div>
+              </div>
+            </div>
+            <div class="insight-card" id="cardActions">
+              <div class="insight-card-header">
+                <div class="insight-label"><span class="insight-dot actions"></span> Action items</div>
+                <button class="btn-icon-sm" type="button" onclick="copyContent('actionsContent')">Copy</button>
+              </div>
+              <div class="insight-body" id="actionsContent">
+                <div class="insight-skeleton"><div class="skeleton-line w80"></div><div class="skeleton-line w60"></div></div>
+              </div>
+            </div>
+            <div class="insight-card" id="cardDecisions">
+              <div class="insight-card-header">
+                <div class="insight-label"><span class="insight-dot decisions"></span> Key decisions</div>
+                <button class="btn-icon-sm" type="button" onclick="copyContent('decisionsContent')">Copy</button>
+              </div>
+              <div class="insight-body" id="decisionsContent">
+                <div class="insight-skeleton"><div class="skeleton-line w70"></div><div class="skeleton-line w85"></div></div>
+              </div>
+            </div>
+            <div class="insight-card full-width" id="cardQuestions">
+              <div class="insight-card-header">
+                <div class="insight-label"><span class="insight-dot questions"></span> Open questions</div>
+                <button class="btn-icon-sm" type="button" onclick="copyContent('questionsContent')">Copy</button>
+              </div>
+              <div class="insight-body" id="questionsContent">
+                <div class="insight-skeleton"><div class="skeleton-line w65"></div><div class="skeleton-line w80"></div></div>
+              </div>
+            </div>
+            <div class="insight-card full-width" id="cardEmail" style="display:none">
+              <div class="insight-card-header">
+                <div class="insight-label"><span class="insight-dot summary"></span> Follow-up email</div>
+                <button class="btn-icon-sm" type="button" onclick="copyContent('emailContent')">Copy</button>
+              </div>
+              <div class="insight-body" id="emailContent"></div>
+            </div>
+          </div>
+
+          <div class="insights-empty" id="insightsEmpty">
+            <p class="empty-title">No AI notes yet</p>
+            <p>Transcribe a meeting to generate Fireflies-style notes.</p>
+            <button class="ff-btn-primary" type="button" data-panel="input" style="margin-top:12px">Transcribe</button>
+          </div>
+        </section>
+
+        <!-- TRANSCRIPT -->
+        <section class="panel" id="panelTranscript">
+          <div class="ff-page-head">
+            <div>
+              <h2>Transcript</h2>
+              <p class="panel-sub">Searchable, timestamped conversation text</p>
+            </div>
+            <div class="panel-actions">
+              <label class="toggle-inline">
+                <input type="checkbox" id="showTimestamps" checked onchange="renderTranscriptView()" />
+                <span>Timestamps</span>
+              </label>
+              <div class="search-box">
+                <input type="text" id="transcriptSearch" placeholder="Search transcript" oninput="searchTranscript(this.value)" />
+                <span class="search-count" id="searchCount" style="display:none"></span>
+              </div>
+              <button class="ff-btn-ghost" type="button" onclick="copyContent('transcriptText')">Copy</button>
+            </div>
+          </div>
+          <div class="transcript-container">
+            <div class="transcript-empty" id="transcriptEmpty">
+              <p class="empty-title">No transcript yet</p>
+              <p>Transcribe a meeting to view the full conversation.</p>
+            </div>
+            <div id="transcriptText" class="transcript-text" style="display:none"></div>
+          </div>
+        </section>
+
+        <!-- ASK FRED -->
+        <section class="panel" id="panelChat">
+          <div class="ff-page-head">
+            <div>
+              <h2>Ask Fred</h2>
+              <p class="chat-subtitle">Chat with your meeting — answers from the transcript only</p>
+            </div>
+            <button class="ff-btn-ghost btn-sm" type="button" onclick="clearChat()">Clear chat</button>
+          </div>
+
+          <div class="chat-empty" id="chatEmpty">
+            <div class="ff-fred-avatar">F</div>
+            <h3>Fred is waiting for a meeting</h3>
+            <p>Transcribe a meeting first, then ask anything about decisions, owners, or next steps.</p>
+            <div class="example-questions">
+              <p>Try asking</p>
+              <div class="example-chips">
+                <span class="chip">What were the main takeaways?</span>
+                <span class="chip">List action items with owners</span>
+                <span class="chip">What is still unresolved?</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="chat-container" id="chatContainer" style="display:none">
+            <div class="chat-messages" id="chatMessages">
+              <div class="chat-system-msg">
+                <div class="system-badge">Fred is online</div>
+                <p>Ask anything about this meeting transcript.</p>
+              </div>
+            </div>
+            <div class="chat-input-area">
+              <div class="chat-suggestions" id="chatSuggestions">
+                <span class="chip-sm" onclick="sendSuggestion(this)">What decisions were made?</span>
+                <span class="chip-sm" onclick="sendSuggestion(this)">List all action items</span>
+                <span class="chip-sm" onclick="sendSuggestion(this)">What problems were discussed?</span>
+              </div>
+              <div class="chat-input-row">
+                <textarea id="chatInput" class="chat-textarea" placeholder="Ask Fred about this meeting…" rows="1" onkeydown="handleChatKey(event)" oninput="autoResizeTextarea(this)"></textarea>
+                <button class="chat-send-btn" id="chatSendBtn" type="button" onclick="sendChatMessage()" aria-label="Send">↑</button>
+              </div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="exportModal" style="display:none" onclick="closeExportModal(event)">
+    <div class="modal-card" role="dialog">
+      <div class="modal-header">
+        <h3 id="exportModalTitle">Export meeting</h3>
+        <button class="modal-close" type="button" onclick="closeExportModal()">✕</button>
+      </div>
+      <p class="modal-subtitle">Choose what to include in your export</p>
+      <div class="export-options">
+        <label class="export-option"><input type="checkbox" id="expTitle" checked /> Title</label>
+        <label class="export-option"><input type="checkbox" id="expSummary" checked /> Overview</label>
+        <label class="export-option"><input type="checkbox" id="expActions" checked /> Action items</label>
+        <label class="export-option"><input type="checkbox" id="expDecisions" checked /> Key decisions</label>
+        <label class="export-option"><input type="checkbox" id="expQuestions" checked /> Open questions</label>
+        <label class="export-option"><input type="checkbox" id="expTranscript" /> Full transcript</label>
+      </div>
+      <div class="export-format-row">
+        <button class="btn-export" type="button" onclick="exportAs('txt')">TXT</button>
+        <button class="btn-export" type="button" onclick="exportAs('md')">Markdown</button>
+        <button class="btn-export" type="button" onclick="exportAs('json')">JSON</button>
+        <button class="btn-export" type="button" onclick="exportAs('pdf')">PDF</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="toast" id="toast" role="status" aria-live="polite"></div>
+  <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

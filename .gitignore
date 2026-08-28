@@ -1,0 +1,92 @@
+# =========================
+# Python cache
+# =========================
+__pycache__/
+*.py[codz]
+*$py.class
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+ENV/
+env/
+
+# =========================
+# Environment variables (IMPORTANT)
+# =========================
+.env
+.envrc
+
+# =========================
+# Logs
+# =========================
+*.log
+
+# =========================
+# Build / packaging
+# =========================
+build/
+dist/
+*.egg-info/
+
+# =========================
+# Testing / coverage
+# =========================
+.pytest_cache/
+.coverage
+htmlcov/
+
+# =========================
+# IDE / Editor files
+# =========================
+.vscode/
+.idea/
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+
+# =========================
+# Jupyter
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Python tooling caches
+# =========================
+.mypy_cache/
+.ruff_cache/
+.pdm-python
+.pdm-build/
+.pixi/
+
+# =========================
+# AI / Vector DB LOCAL DATA (IMPORTANT)
+# =========================
+vector_db/
+vectordb/
+chroma/
+chroma_db/
+faiss_index/
+pinecone/
+weaviate/
+*.db
+*.sqlite3
+data/
+
+# =========================
+# Streamlit secrets (if used)
+# =========================
+.streamlit/secrets.toml
+
+# audio / downloads
+downloades/
+*.wav
+
+# vector database
+vector_db/
+chroma.sqlite3
+*.bin
